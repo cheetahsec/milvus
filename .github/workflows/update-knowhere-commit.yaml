@@ -29,7 +29,7 @@ jobs:
         id: get-knowhere-latest-commit
         run: | 
           cd ..
-          git clone https://github.com/zilliztech/Knowhere.git
+          git clone https://github.com/cheetahsec/knowhere.git
           cd Knowhere
           export commit=$(git rev-parse --short HEAD)
           echo $commit
