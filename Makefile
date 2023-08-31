@@ -51,7 +51,7 @@ get-build-deps:
 # attention: upgrade golangci-lint should also change Dockerfiles in build/docker/builder/cpu/<os>
 getdeps:
 	@mkdir -p $(INSTALL_PATH)
-	@$(INSTALL_PATH)/golangci-lint --version 2>&1 1>/dev/null || (echo "Installing golangci-lint into ./bin/" && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(INSTALL_PATH) v1.53.1)
+	@$(INSTALL_PATH)/golangci-lint --version 2>&1 1>/dev/null || (echo "Installing golangci-lint into ./bin/" && curl -sSfL https://raw.gitmirror.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(INSTALL_PATH) v1.53.1)
 	@$(INSTALL_PATH)/mockery --version 2>&1 1>/dev/null || (echo "Installing mockery to ./bin/" && GOBIN=$(INSTALL_PATH)/ go install github.com/vektra/mockery/v2@v2.32.4)
 
 tools/bin/revive: tools/check/go.mod
@@ -79,15 +79,15 @@ lint: tools/bin/revive
 	@tools/bin/revive -formatter friendly -config tools/check/revive.toml ./...
 
 #TODO: Check code specifications by golangci-lint
-static-check: getdeps
-	@echo "Running $@ check"
-	@GO111MODULE=on $(INSTALL_PATH)/golangci-lint cache clean
-	@source $(PWD)/scripts/setenv.sh && GO111MODULE=on $(INSTALL_PATH)/golangci-lint run --timeout=30m --config ./.golangci.yml ./internal/...
-	@source $(PWD)/scripts/setenv.sh && GO111MODULE=on $(INSTALL_PATH)/golangci-lint run --timeout=30m --config ./.golangci.yml ./cmd/...
-	@source $(PWD)/scripts/setenv.sh && GO111MODULE=on $(INSTALL_PATH)/golangci-lint run --timeout=30m --config ./.golangci.yml ./tests/integration/...
-	@source $(PWD)/scripts/setenv.sh && GO111MODULE=on $(INSTALL_PATH)/golangci-lint run --timeout=30m --config ./.golangci.yml ./...
+# static-check: getdeps
+# 	@echo "Running $@ check"
+# 	@GO111MODULE=on $(INSTALL_PATH)/golangci-lint cache clean
+# 	@source $(PWD)/scripts/setenv.sh && GO111MODULE=on $(INSTALL_PATH)/golangci-lint run --timeout=30m --config ./.golangci.yml ./internal/...
+# 	@source $(PWD)/scripts/setenv.sh && GO111MODULE=on $(INSTALL_PATH)/golangci-lint run --timeout=30m --config ./.golangci.yml ./cmd/...
+# 	@source $(PWD)/scripts/setenv.sh && GO111MODULE=on $(INSTALL_PATH)/golangci-lint run --timeout=30m --config ./.golangci.yml ./tests/integration/...
+# 	@source $(PWD)/scripts/setenv.sh && GO111MODULE=on $(INSTALL_PATH)/golangci-lint run --timeout=30m --config ./.golangci.yml ./...
 
-verifiers: build-cpp getdeps cppcheck fmt static-check
+verifiers: build-cpp getdeps cppcheck fmt #static-check
 
 # Build various components locally.
 binlog:

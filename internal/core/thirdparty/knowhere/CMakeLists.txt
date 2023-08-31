@@ -11,7 +11,7 @@
 # or implied. See the License for the specific language governing permissions and limitations under the License.
 #-------------------------------------------------------------------------------
 
-set( KNOWHERE_VERSION 4176a66 )
+set( KNOWHERE_VERSION 8279bc7 )
 
 message(STATUS "Building knowhere-${KNOWHERE_SOURCE_VER} from source")
 message(STATUS ${CMAKE_BUILD_TYPE})
@@ -37,6 +37,7 @@ FetchContent_Declare(
         DOWNLOAD_DIR    ${THIRDPARTY_DOWNLOAD_PATH} )
 
 FetchContent_GetProperties( knowhere )
+# set( knowhere_POPULATED FALSE )
 if ( NOT knowhere_POPULATED )
     FetchContent_Populate( knowhere )
 
