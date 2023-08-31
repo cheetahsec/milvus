@@ -30,4 +30,7 @@ const (
 
 	// JACCARD represents jaccard distance
 	JACCARD MetricType = "JACCARD"
+
+	// TLSH represents tlsh distance
+	TLSH MetricType = "TLSH"
 )
