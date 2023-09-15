@@ -11,7 +11,7 @@
 # or implied. See the License for the specific language governing permissions and limitations under the License.
 #-------------------------------------------------------------------------------
 
-set( KNOWHERE_VERSION bbdd327 )
+set( KNOWHERE_VERSION 924b1df )
 
 message(STATUS "Building knowhere-${KNOWHERE_SOURCE_VER} from source")
 message(STATUS ${CMAKE_BUILD_TYPE})
@@ -39,6 +39,7 @@ FetchContent_Declare(
 FetchContent_GetProperties( knowhere )
 # set( knowhere_POPULATED FALSE )
 if ( NOT knowhere_POPULATED )
+    message( STATUS "knowhere_POPULATED" )
     FetchContent_Populate( knowhere )
 
     # Adding the following target:
@@ -50,3 +51,4 @@ endif()
 # get prometheus COMPILE_OPTIONS
 get_property( var DIRECTORY "${knowhere_SOURCE_DIR}" PROPERTY COMPILE_OPTIONS )
 message( STATUS "knowhere src compile options: ${var}" )
+message( STATUS ${CMAKE_BUILD_TYPE} )
