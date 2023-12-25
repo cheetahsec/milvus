@@ -42,7 +42,7 @@ const (
 var METRICS = []string{metric.L2, metric.IP, metric.COSINE} // const
 
 // BinIDMapMetrics is a set of all metric types supported for binary vector.
-var BinMetrics = []string{metric.HAMMING, metric.JACCARD, metric.TLSH}                                                    // const
+var BinMetrics = []string{metric.HAMMING, metric.JACCARD, metric.TLSH}                                       // const
 var HnswMetrics = []string{metric.L2, metric.IP, metric.COSINE, metric.HAMMING, metric.JACCARD, metric.TLSH} // const
 var supportDimPerSubQuantizer = []int{32, 28, 24, 20, 16, 12, 10, 8, 6, 4, 3, 2, 1}                          // const
 var supportSubQuantizer = []int{96, 64, 56, 48, 40, 32, 28, 24, 20, 16, 12, 8, 4, 3, 2, 1}                   // const

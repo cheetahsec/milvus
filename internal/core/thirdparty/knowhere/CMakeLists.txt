@@ -11,7 +11,7 @@
 # or implied. See the License for the specific language governing permissions and limitations under the License.
 #-------------------------------------------------------------------------------
 
-set( KNOWHERE_VERSION b077542 )
+set( KNOWHERE_VERSION 924b1df )
 
 message(STATUS "Building knowhere-${KNOWHERE_SOURCE_VER} from source")
 message(STATUS ${CMAKE_BUILD_TYPE})
@@ -50,5 +50,9 @@ endif()
 
 # get prometheus COMPILE_OPTIONS
 get_property( var DIRECTORY "${knowhere_SOURCE_DIR}" PROPERTY COMPILE_OPTIONS )
+<<<<<<< HEAD
+message( STATUS "knowhere src compile options: ${var}" )
+=======
 message( STATUS "knowhere src compile options: ${var}" )
 message( STATUS ${CMAKE_BUILD_TYPE} )
+>>>>>>> a32ed66a877b01d090842dcdac5d3513ac08bdac

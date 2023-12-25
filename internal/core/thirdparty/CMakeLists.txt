@@ -12,20 +12,26 @@
 #-------------------------------------------------------------------------------
 # Using default c and cxx compiler in our build tree
 # Thirdpart cxx and c flags
+
+# 设置编译器选项
 append_flags(CMAKE_CXX_FLAGS FLAGS "-O3 -fPIC -Wno-error -fopenmp")
 
+# 设置第三方库构建日志选项
 if (NOT KNOWHERE_VERBOSE_THIRDPARTY_BUILD)
     set(EP_LOG_OPTIONS LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1 LOG_DOWNLOAD 1)
 else ()
     set(EP_LOG_OPTIONS)
 endif ()
 
+# 设置构建参数
 set(MAKE_BUILD_ARGS "-j6")
 
+# 包含 FetchContent 模块，用于下载和构建第三方库
 include(FetchContent)
 set(FETCHCONTENT_BASE_DIR  ${MILVUS_BINARY_DIR}/3rdparty_download)
 set(FETCHCONTENT_QUIET     OFF)
 
+# 设置第三方库下载路径
 if(CUSTOM_THIRDPARTY_DOWNLOAD_PATH)
     set(THIRDPARTY_DOWNLOAD_PATH ${CUSTOM_THIRDPARTY_DOWNLOAD_PATH})
 else()
@@ -35,16 +41,18 @@ message(STATUS "Thirdparty downloaded file path: ${THIRDPARTY_DOWNLOAD_PATH}")
 # ----------------------------------------------------------------------
 # Find pthreads
 
+# 查找 pthreads 库
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+# 添加各个第三方库的子目录，这些子目录中通常包含了各自的 CMakeLists.txt 文件
 add_subdirectory(knowhere)
-
 add_subdirectory(boost_ext)
 add_subdirectory(rocksdb)
 add_subdirectory(rdkafka)
 add_subdirectory(simdjson)
 
+# 如果是 Linux 系统，添加 jemalloc 库
 if (LINUX)
     add_subdirectory(jemalloc)
 endif()
