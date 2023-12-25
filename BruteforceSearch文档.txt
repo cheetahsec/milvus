@@ -1,0 +1,258 @@
+
+# 只有官方库有这个BruteforceSearch对象和接口？
+hnswlib/hnswlib/bruteforce.h
+hnswlib::BruteforceSearch<dist_t> *alg;???
+
+-->searchKnnBF 改造为这个函数
+这个函数 searchKnnBF 是一个基于暴力搜索（Brute Force）的 k-近邻搜索方法。
+它接收三个参数：query_data（查询点），k（要查找的最近邻居数量）和 bitset（一个用于标记已删除元素的位集合）。
+
+
+SegmentGrowingImpl::vector_search ?
+
+在 Milvus 中，已封存（sealed）指的是一个数据段（segment）已经达到其最大容量，不再接受新数据插入。封存的数据段通常会进行索引构建以提高查询性能。封存过程意味着数据段已经稳定，不会再发生变化，这有助于优化查询操作和索引构建。
+在这种情况下，SegmentSealedImpl 类表示一个已封存的数据段，它包含了一组固定的数据，可以在这些数据上执行搜索和其他查询操作。
+
+SegmentSealedImpl::vector_search
+    SearchOnSealed -> BruteForceSearch
+    SearchOnGrowing -> BruteForceSearch
+
+K:\threat_intelligence_code\milvus\internal\core\src\query\SearchBruteForce.h
+K:\threat_intelligence_code\milvus\internal\core\src\query\SearchBruteForce.cpp
+
+if (conf.contains(RADIUS)) {
+    auto res = knowhere::BruteForce::RangeSearch(base_dataset, query_dataset, config, bitset);
+} else {
+    auto stat = knowhere::BruteForce::SearchWithBuf(...)
+}
+
+调用到knowhere内部
+
+K:\threat_intelligence_code\knowhere\include\knowhere\comp\brute_force.h
+
+namespace knowhere {
+
+class BruteForce {
+ public:
+    static expected<DataSetPtr>
+    Search(const DataSetPtr base_dataset, const DataSetPtr query_dataset, const Json& config, const BitsetView& bitset);
+
+    static Status
+    SearchWithBuf(const DataSetPtr base_dataset, const DataSetPtr query_dataset, int64_t* ids, float* dis,
+                  const Json& config, const BitsetView& bitset);
+
+    static expected<DataSetPtr>
+    RangeSearch(const DataSetPtr base_dataset, const DataSetPtr query_dataset, const Json& config,
+                const BitsetView& bitset);
+};
+
+}  // namespace knowhere
+
+
+// src/common/comp/brute_force.cc
+expected<DataSetPtr>
+BruteForce::Search(const DataSetPtr base_dataset, const DataSetPtr query_dataset, const Json& config,
+                   const BitsetView& bitset) {
+    // base_dataset: 数据集指针，包含待搜索的向量数据
+    // query_dataset: 数据集指针，包含查询向量
+    // config: Json 格式的配置，包含搜索参数，如：度量类型、k值等
+    // bitset: 位视图，用于过滤不需要搜索的向量
+
+    // 获取基础数据集的张量、行数和维度
+    auto xb = base_dataset->GetTensor();
+    auto nb = base_dataset->GetRows();
+    auto dim = base_dataset->GetDim();
+
+    // 获取查询数据集的张量和行数
+    auto xq = query_dataset->GetTensor();
+    auto nq = query_dataset->GetRows();
+
+    // 加载配置
+    BruteForceConfig cfg;
+    std::string msg;
+    auto status = Config::Load(cfg, config, knowhere::SEARCH, &msg);
+    if (status != Status::success) {
+        return expected<DataSetPtr>::Err(status, msg);
+    }
+
+    // 获取度量类型
+    std::string metric_str = cfg.metric_type.value();
+    auto result = Str2FaissMetricType(metric_str);
+    if (result.error() != Status::success) {
+        return expected<DataSetPtr>::Err(result.error(), result.what());
+    }
+    faiss::MetricType faiss_metric_type = result.value();
+    bool is_cosine = IsMetricType(metric_str, metric::COSINE);
+
+    // 获取 k 值
+    int topk = cfg.k.value();
+    auto labels = new int64_t[nq * topk];
+    auto distances = new float[nq * topk];
+
+    // 使用线程池进行并行搜索
+    auto pool = ThreadPool::GetGlobalSearchThreadPool();
+    std::vector<folly::Future<Status>> futs;
+    futs.reserve(nq);
+    for (int i = 0; i < nq; ++i) {
+        futs.emplace_back(pool->push([&, index = i] {
+            ThreadPool::ScopedOmpSetter setter(1);
+            auto cur_labels = labels + topk * index;
+            auto cur_distances = distances + topk * index;
+            // 根据度量类型进行不同的搜索操作
+            switch (faiss_metric_type) {
+                // ... 各种度量类型的处理逻辑 ...
+            }
+            return Status::success;
+        }));
+    }
+    // 等待所有搜索任务完成
+    for (auto& fut : futs) {
+        fut.wait();
+        auto ret = fut.result().value();
+        if (ret != Status::success) {
+            return expected<DataSetPtr>::Err(ret, "failed to brute force search");
+        }
+    }
+    // 生成搜索结果数据集
+    return GenResultDataSet(nq, cfg.k.value(), labels, distances);
+}
+
+
+--------------》
+两种方案
+1. 调用 searchKnnBF 接口
+
+
+2. 改造faiss增加TLSH支持 和METRIC_Substructure保持一致 调用binary_knn_mc/binary_knn_hc?接口
+K:\threat_intelligence_code\knowhere\thirdparty\faiss\faiss\utils\binary_distances.cpp
+
+binary_knn_mc 
+函数是一个多分类二进制最近邻搜索函数，用于在给定的数据集中找到与查询向量最接近的 k 个邻居。
+它根据给定的度量类型（metric_type）来计算不同的距离。
+
+函数参数：
+- metric_type：度量类型，用于确定计算距离的方法。支持的类型有 METRIC_Substructure 和 METRIC_Superstructure。
+- a：查询向量集，大小为 na。
+- b：数据集向量集，大小为 nb。
+- na：查询向量集的大小。
+- nb：数据集向量集的大小。
+- k：要查找的最近邻居的数量。
+- ncodes：编码大小，表示向量的字节长度。
+- distances：输出参数，存储查询向量与找到的最近邻居之间的距离。
+- labels：输出参数，存储找到的最近邻居的索引。
+- bitset：一个可选的位集，用于过滤数据集中的某些向量。
+
+函数实现：
+1. 根据 metric_type 的值，选择不同的距离计算方法。
+2. 对于 METRIC_Substructure 和 METRIC_Superstructure，根据 ncodes 的值选择对应的 StructureComputer 模板实例。
+3. 调用 binary_knn_mc 函数模板实例，传入相应的参数，执行最近邻搜索。
+4. 将搜索结果存储在 distances 和 labels 中。
+
+注意：这个函数主要用于处理二进制数据，因此在计算距离时使用了特定于二进制数据的度量。
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+binary_knn_mc 和 binary_knn_hc 函数都用于处理二进制向量检索，但它们在实现和适用场景上有所不同。下面是这两个函数之间的主要差异：
+
+1. 结果存储和更新方式：
+
+- binary_knn_hc 使用堆（heap）数据结构来存储和维护最近邻结果。堆是一种特殊的树形数据结构，它可以高效地找到、插入和删除最大或最小元素。在这种情况下，堆用于存储 k 个最近邻的距离和索引。当新的距离值需要��入堆时，堆会自动调整以保持正确的顺序。
+
+- binary_knn_mc 使用数组（array）来存储和计算最近邻结果。这种方法适用于子结构和超结构匹配，因为它们只关心匹配的 ID，而不需要对结果进行排序。在这种情况下，数组用于存储匹配的 ID 和距离。
+
+2. 度量类型和适用场景：
+
+- binary_knn_hc 适用于 Jaccard 相似度和汉明距离等度量类型。这些度量类型需要对结果进行排序以找到最近邻。
+
+- binary_knn_mc 适用于子结构和超结构匹配。这些度量类型主要关注匹配的 ID，而不需要对结果进行排序。
+
+3. 并行处理：
+
+- binary_knn_hc 使用线程池进行并行搜索。每个查询向量都会分配给一个线程，该线程负责计算查询向量与数据库向量之间的距离并更新堆。
+
+- binary_knn_mc 在处理多个查询向量时，会根据系统的 L3 缓存大小和线程数量来调整搜索策略。这有助于在处理大量查询向量时提高性能。
+
+总之，binary_knn_mc 和 binary_knn_hc 函数在实现和适用场景上有所不同。binary_knn_hc 使用堆数据结构，适用于需要排序的度量类型，如 Jaccard 相似度和汉明距离。而 binary_knn_mc 使用数组，适用于子结构和超结构匹配，这些度量类型只关心匹配的 ID。
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+To optimize the diff function in tlsh_utils.h using the SIMD instructions from the src/simd library, you can follow these steps:
+
+1. Include the necessary SIMD headers in tlsh_utils.h:
+
+2. Modify the h_distance function to use SIMD instructions for calculating the Hamming distance. Replace the existing loop with SIMD-based operations:
+static int h_distance(int len, const unsigned char x[], const unsigned char y[]) {
+    int diff = 0;
+    size_t simd_len = len / 16;
+
+    for (size_t i = 0; i < simd_len; i++) {
+        __m128i x_vec = _mm_loadu_siundefined28((__m128i*)(x + i * 16));
+        __m128i y_vec = _mm_loadu_si128((__m128i*)(y + i * 16));
+        __m128i xor_vec = _mm_xor_si128(x_vec, y_vec);
+        diff += _mm_popcnt_u32(_mm_movemask_epi8(xor_vec));
+    }
+
+    for (size_t i = simd_len * 16; i < len; i++) {
+        diff += bit_pairs_diff_table[x[i]][y[i]];
+    }
+
+    return diff;
+}
+
+This modification uses the _mm_loadu_si128, _mm_xor_si128, and _mm_popcnt_u32 SIMD instructions to calculate the Hamming distance more efficiently.
+
+Remember to test the modified code to ensure it produces the correct results and provides the desired performance improvement.
+
+
+
+metric::TLSH 
+
+K:\threat_intelligence_code\knowhere\include\knowhere\comp\index_param.h
+namespace metric {
+constexpr const char* IP = "IP";
+constexpr const char* L2 = "L2";
+constexpr const char* COSINE = "COSINE";
+constexpr const char* HAMMING = "HAMMING";
+constexpr const char* JACCARD = "JACCARD";
+constexpr const char* SUBSTRUCTURE = "SUBSTRUCTURE";
+constexpr const char* SUPERSTRUCTURE = "SUPERSTRUCTURE";
+constexpr const char* TLSH = "TLSH";
+}  // namespace metric
+
+
+K:\threat_intelligence_code\knowhere\thirdparty\hnswlib\hnswlib\hnswalg.h
+enum Metric {
+    L2 = 0,
+    INNER_PRODUCT = 1,
+    COSINE = 2,
+    HAMMING = 10,
+    JACCARD = 11,
+    TLSH = 99,
+    UNKNOWN = 100,
+};
+
+--> 新修改
+
+K:\threat_intelligence_code\knowhere\src\common\metric.h
+enum MetricType {
+    METRIC_INNER_PRODUCT = 0, ///< maximum inner product search
+    METRIC_L2 = 1,            ///< squared L2 search
+    METRIC_L1 = 2,            ///< L1 (aka cityblock)
+    METRIC_Linf = 3,          ///< infinity distance
+    METRIC_Lp = 4,            ///< L_p distance, p is given by a faiss::Index
+                              /// metric_arg
+
+    METRIC_Jaccard = 5,
+    METRIC_Hamming = 7,
+    METRIC_Substructure = 8,   ///< Tversky case alpha = 0, beta = 1
+    METRIC_Superstructure = 9, ///< Tversky case alpha = 1, beta = 0
+
+    METRIC_TLSH = 99,
+
+    /// some additional metrics defined in scipy.spatial.distance
+    METRIC_Canberra = 20,
+    METRIC_BrayCurtis = 21,
+    METRIC_JensenShannon = 22,
+};
