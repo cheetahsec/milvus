@@ -39,6 +39,7 @@ FetchContent_Declare(
 FetchContent_GetProperties( knowhere )
 # set( knowhere_POPULATED FALSE )
 if ( NOT knowhere_POPULATED )
+    message( STATUS "knowhere_POPULATED" )
     FetchContent_Populate( knowhere )
 
     # Adding the following target:
@@ -49,4 +50,9 @@ endif()
 
 # get prometheus COMPILE_OPTIONS
 get_property( var DIRECTORY "${knowhere_SOURCE_DIR}" PROPERTY COMPILE_OPTIONS )
+<<<<<<< HEAD
 message( STATUS "knowhere src compile options: ${var}" )
+=======
+message( STATUS "knowhere src compile options: ${var}" )
+message( STATUS ${CMAKE_BUILD_TYPE} )
+>>>>>>> a32ed66a877b01d090842dcdac5d3513ac08bdac

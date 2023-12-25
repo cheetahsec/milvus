@@ -26,6 +26,10 @@ ROOT_DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 CPP_SRC_DIR="${ROOT_DIR}/internal/core"
 BUILD_OUTPUT_DIR="${ROOT_DIR}/cmake_build"
 
+echo "ROOT_DIR ${ROOT_DIR}"
+echo "CPP_SRC_DIR ${CPP_SRC_DIR}"
+echo "BUILD_OUTPUT_DIR ${BUILD_OUTPUT_DIR}"
+
 if [[ ! -d ${BUILD_OUTPUT_DIR} ]]; then
   mkdir ${BUILD_OUTPUT_DIR}
 fi
@@ -49,9 +53,9 @@ case "${unameOut}" in
     export CPU_TARGET=avx
     GCC_VERSION=`gcc -dumpversion`
     if [[ `gcc -v 2>&1 | sed -n 's/.*\(--with-default-libstdcxx-abi\)=\(\w*\).*/\2/p'` == "gcc4" ]]; then
-      conan install ${CPP_SRC_DIR} --install-folder conan --build=missing -s compiler.version=${GCC_VERSION} || { echo 'conan install failed'; exit 1; }
+      conan install ${CPP_SRC_DIR} --install-folder conan --build=missing -s compiler.version=${GCC_VERSION} -s build_type=Release || { echo 'conan install failed'; exit 1; }
     else
-      conan install ${CPP_SRC_DIR} --install-folder conan --build=missing -s compiler.version=${GCC_VERSION} -s compiler.libcxx=libstdc++11 || { echo 'conan install failed'; exit 1; }
+      conan install ${CPP_SRC_DIR} --install-folder conan --build=missing -s compiler.version=${GCC_VERSION} -s compiler.libcxx=libstdc++11 -s build_type=Release || { echo 'conan install failed'; exit 1; }
     fi
     ;;
   *)

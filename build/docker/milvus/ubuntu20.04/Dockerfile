@@ -30,7 +30,7 @@ ENV LD_PRELOAD=/milvus/lib/libjemalloc.so
 ENV MALLOC_CONF=background_thread:true
 
 # Add Tini
-ADD https://github.com/krallin/tini/releases/download/v0.19.0/tini-$TARGETARCH /tini
+ADD https://ghproxy.com/https://github.com/krallin/tini/releases/download/v0.19.0/tini-$TARGETARCH /tini
 RUN chmod +x /tini
 ENTRYPOINT ["/tini", "--"]
 
